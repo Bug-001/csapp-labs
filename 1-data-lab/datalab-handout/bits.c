@@ -143,7 +143,7 @@ NOTES:
  *   Rating: 1
  */
 int bitXor(int x, int y) {
-  return 2;
+  return (~(x&y))&(~(~x&~y));
 }
 /* 
  * tmin - return minimum two's complement integer 
@@ -152,9 +152,7 @@ int bitXor(int x, int y) {
  *   Rating: 1
  */
 int tmin(void) {
-
-  return 2;
-
+  return 1<<31; 
 }
 //2
 /*
@@ -165,7 +163,11 @@ int tmin(void) {
  *   Rating: 1
  */
 int isTmax(int x) {
-  return 2;
+  // x == ~(x+1) if but not only if x == 0x7fffffff, so we'd ensure that x != -1.
+  int x_plus_1 = x + 1;
+  int y = ~x_plus_1;
+  // return (!(x^y)) & (!!x_plus_1);
+  return !((x^y) | (!x_plus_1)); // after simplified
 }
 /* 
  * allOddBits - return 1 if all odd-numbered bits in word set to 1
@@ -176,7 +178,11 @@ int isTmax(int x) {
  *   Rating: 2
  */
 int allOddBits(int x) {
-  return 2;
+  int n0 = 0xaa;
+  int n1 = n0 + (n0 << 8);
+  int oddMask = n1 + (n1 << 16);
+  int maskAns = oddMask & x;
+  return !(oddMask ^ maskAns);
 }
 /* 
  * negate - return -x 
@@ -186,7 +192,7 @@ int allOddBits(int x) {
  *   Rating: 2
  */
 int negate(int x) {
-  return 2;
+  return ~x+1;
 }
 //3
 /* 
@@ -199,7 +205,10 @@ int negate(int x) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
-  return 2;
+  int x_plus_1 = x + 1;
+  int x_sub_0x30 = x_plus_1 + (~0x30);
+  int x_sub_0x3a = x_plus_1 + (~0x3a);
+  return (((x_sub_0x30 ^ x_sub_0x3a) & ~x) >> 31) & 1;
 }
 /* 
  * conditional - same as x ? y : z 
@@ -209,7 +218,8 @@ int isAsciiDigit(int x) {
  *   Rating: 3
  */
 int conditional(int x, int y, int z) {
-  return 2;
+  int cond_x_n = (!x) << 31 >> 31;
+  return (cond_x_n & z) | ((~cond_x_n) & y);
 }
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
@@ -218,8 +228,14 @@ int conditional(int x, int y, int z) {
  *   Max ops: 24
  *   Rating: 3
  */
-int isLessOrEqual(int x, int y) {
-  return 2;
+int isLessOrEqual(int x, int y) { 
+  int sign_x = x >> 31;
+  int sign_y = y >> 31;
+  int sign_diff = sign_x ^ sign_y;
+  int ret_if_sign_diff = sign_x;
+  int y_sub_x = y + ~x + 1;
+  int ret_if_sign_not_diff = ~(y_sub_x >> 31);
+  return ((sign_diff&ret_if_sign_diff) | (~sign_diff&ret_if_sign_not_diff)) & 1;
 }
 //4
 /* 
