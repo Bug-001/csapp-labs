@@ -247,7 +247,7 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4 
  */
 int logicalNeg(int x) {
-  return 2;
+  return ((x|(~x+1))>>31)+1;
 }
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
@@ -262,7 +262,21 @@ int logicalNeg(int x) {
  *  Rating: 4
  */
 int howManyBits(int x) {
-  return 0;
+  int sign_x = x >> 31;  
+  int h16, h8, h4, h2, h1, h0;
+  x = (sign_x&~x) | (~sign_x&x);
+  h16 = !!(x >> 16) << 4;
+  x = x >> h16;
+  h8  = !!(x >> 8 ) << 3;
+  x = x >> h8 ;
+  h4  = !!(x >> 4 ) << 2;
+  x = x >> h4 ;
+  h2  = !!(x >> 2 ) << 1;
+  x = x >> h2 ;
+  h1  = !!(x >> 1 );
+  x = x >> h1 ;
+  h0  = x;
+  return h16 + h8 + h4 + h2 + h1 + h0 + 1;
 }
 //float
 /* 
@@ -277,7 +291,18 @@ int howManyBits(int x) {
  *   Rating: 4
  */
 unsigned floatScale2(unsigned uf) {
-  return 2;
+  unsigned exp = (uf >> 23) & 0xff;
+  unsigned frac = uf & 0x7fffff;
+  if (exp == 0) {
+    if (frac >> 22) exp = 1;
+    frac = frac << 1;
+  } else if (exp == 0xfe) {
+    exp = 0xff;
+    frac = 0;
+  } else if (exp != 0xff) {
+    exp = exp + 1;
+  }
+  return (uf & 0x80000000) | (exp << 23) | frac;
 }
 /* 
  * floatFloat2Int - Return bit-level equivalent of expression (int) f
@@ -292,7 +317,23 @@ unsigned floatScale2(unsigned uf) {
  *   Rating: 4
  */
 int floatFloat2Int(unsigned uf) {
-  return 2;
+  unsigned sign = uf >> 31;
+  unsigned exp = (uf >> 23) & 0xff;
+  unsigned frac = uf & 0x7fffff;
+  unsigned n = exp - 127;
+  int ans = 1 << n;
+  int i = 22;
+  unsigned frac_msb = 0;
+  if (exp < 127) return 0;
+  else if (exp >= 158) return 0x80000000;
+  while (n > 0) {
+    n = n - 1;
+    frac_msb = (frac >> i) & 1;
+    i = i - 1;
+    ans = ans + (frac_msb << n);
+  }
+  if (sign) return -ans;
+  else return ans;
 }
 /* 
  * floatPower2 - Return bit-level equivalent of the expression 2.0^x
@@ -308,5 +349,8 @@ int floatFloat2Int(unsigned uf) {
  *   Rating: 4
  */
 unsigned floatPower2(int x) {
-    return 2;
+  if (x > 127) return 0x7f800000;
+  else if (x < -149) return 0;
+  else if (x > -127) return (x + 127) << 23;
+  else return 1 << (x + 149);
 }
